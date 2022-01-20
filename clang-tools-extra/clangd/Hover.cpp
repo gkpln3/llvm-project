@@ -855,10 +855,29 @@ void addLayoutInfo(const NamedDecl &ND, HoverInfo &HI) {
           HI.Padding = Layout.getSize().getQuantity() - EndOfField;
         }
       }
+
       // Offset in a union is always zero, so not really useful to report.
       if (Record->isUnion())
         HI.Offset.reset();
     }
+
+	// If declaration is invalid, try a more huristic approch to get the offset.
+	if (Record->isInvalidDecl()) {
+		unsigned SizeBeforeField = 0;
+		auto FieldIter = Record->field_begin();
+		while (FieldIter != Record->field_end()) {
+			if (*FieldIter == FD) {
+				HI.Offset =  SizeBeforeField;
+				break;
+			}
+			auto Size = Ctx.getTypeSizeInCharsIfKnown(FieldIter->getType());
+			if (!Size) {
+				break;
+			}
+			SizeBeforeField += Size->getQuantity();
+			FieldIter++;
+		}
+	}
     return;
   }
 }
